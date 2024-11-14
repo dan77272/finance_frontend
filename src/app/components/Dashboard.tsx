@@ -54,7 +54,7 @@ export default function Dashboard() {
             setIsTokenLoaded(true)
 
             try {
-                const incomeRes = await fetch(`http://localhost:8080/api/income/user/${userId}`, {
+                const incomeRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/income/user/${userId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (!incomeRes.ok) {
@@ -64,7 +64,7 @@ export default function Dashboard() {
                 const incomeData = await incomeRes.json();
                 setIncome(incomeData);
 
-                const expenseRes = await fetch(`http://localhost:8080/api/expense/user/${userId}`, {
+                const expenseRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/expense/user/${userId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 console.log(expenseRes)
@@ -215,7 +215,7 @@ export default function Dashboard() {
 
     async function handleSubscribe(){
         const token = localStorage.getItem('token')
-        const response = await fetch(`http://localhost:8080/api/auth/subscribe`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/subscribe`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

@@ -13,7 +13,7 @@ export default function AddIncomeForm() {
     const token = localStorage.getItem('token');
     const userId = localStorage.getItem('userId');
     const res = await fetch(
-      `http://localhost:8080/api/income/add?userId=${userId}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/api/income/add?userId=${userId}`,
       {
         method: 'POST',
         headers: {
