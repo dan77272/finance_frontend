@@ -10,10 +10,19 @@ export default function Navbar(){
     const router = useRouter()
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [token, setToken] = useState<string | null>('')
+    const [username, setUsername] = useState('')
 
     useEffect(() => {
         const storedToken = localStorage.getItem('token') || ''
         setToken(storedToken)
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/profile`, {
+          headers: {Authorization: `Bearer ${storedToken}`},
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log(data.username)
+            setUsername(data.username)
+          }).catch((err) => console.error("Error: ", err))
     }, [])
 
     function handleSignOut(){
@@ -55,12 +64,15 @@ export default function Navbar(){
                 <p className="text-base font-medium hover:text-gray-200">Features</p>
               </Link>
               {token ? (
-                <button
+                <>
+                  <button
                   onClick={handleSignOut}
                   className="text-base font-medium hover:text-gray-200 focus:outline-none"
                 >
                   Sign Out
                 </button>
+                <p className="text-base font-medium hover:text-gray-200">{username}</p>
+                </>
               ) : (
                 <>
                   <Link href="/register">
