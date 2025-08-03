@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { ChangeEvent, FormEvent, useState } from "react";
-import Navbar from "../components/Navbar";
 
 interface RegisterForm {
     email: string;
@@ -66,11 +65,8 @@ export default function Register() {
     }
 
     return (
-        <div>
-            <div className="flex flex-col justify-center items-center h-screen">
-                <div className="absolute inset-0 bg-cover bg-no-repeat -z-10" style={{backgroundImage: "url('background.webp')"}}></div>
-                <div className="absolute inset-0 bg-black opacity-60 -z-10"></div>
-                <Navbar/>
+        <div className="flex flex-col justify-center items-center h-screen bg-gradient-to-br from-black to-neutral-700 min-h-screen pt-16">
+            <div>
                 <form className="flex flex-col justify-center items-center my-auto" onSubmit={handleSubmit}>
                     <label className="text-white text-lg">Email</label>
                     <input 

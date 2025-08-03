@@ -25,71 +25,76 @@ interface Expense {
 
 export default function Dashboard() {
     Chart.register(CategoryScale, LinearScale, BarElement, Title, ArcElement, Tooltip, Legend);
+
     const [income, setIncome] = useState<Income[]>([]);
     const [expense, setExpense] = useState<Expense[]>([]);
     const [userId, setUserId] = useState<string>('');
-    const [isTokenLoaded, setIsTokenLoaded] = useState(false)
+    const [isProfileLoaded, setIsProfileLoaded] = useState(false);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+
     const [startDate, setStartDate] = useState<string>('')
     const [endDate, setEndDate] = useState<string>('')
     const [categoryFilter, setCategoryFilter] = useState<string>('')
     const [incomeSearch, setIncomeSearch] = useState<string>('')
     const [expenseSearch, setExpenseSearch] = useState<string>('')
+    const [reloadKey, setReloadKey] = useState(0);
 
     const [emailReportFrequency, setEmailReportFrequency] = useState<string>('weekly')
     const [isSubscribed, setIsSubscribed] = useState<boolean>(false)
 
     const threshold = 500;
 
+    // 1. Fetch profile on mount to get userId and check auth
     useEffect(() => {
-        // Only runs on the client side
-        if (typeof window !== 'undefined') {
-            const storedUserId = localStorage.getItem('userId') || '';
-            setUserId(storedUserId);
-        }
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/profile`, {
+            credentials: 'include'
+        })
+        .then(res => {
+            if (res.ok) return res.json();
+            throw new Error('Unauthorized');
+        })
+        .then(data => {
+            setUserId(data.userId);
+            setIsAuthenticated(true);
+        })
+        .catch(() => {
+            setIsAuthenticated(false);
+            window.location.href = '/login';
+        })
+        .finally(() => setIsProfileLoaded(true));
     }, []);
 
-    useEffect(() => {
-        async function fetchData() {
-            const token = localStorage.getItem('token');
-            setIsTokenLoaded(true)
-
-            try {
-                const incomeRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/income/user/${userId}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (!incomeRes.ok) {
-                    console.error("Income fetch error:", incomeRes.status, incomeRes.statusText);
-                    return;
-                }
-                const incomeData = await incomeRes.json();
-                setIncome(incomeData);
-
-                const expenseRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/expense/user/${userId}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                console.log(expenseRes)
-                if (!expenseRes.ok) {
-                    console.error("Expense fetch error:", expenseRes.status, expenseRes.statusText);
-                    return;
-                }
-                const expenseData = await expenseRes.json();
-                setExpense(expenseData);
-            } catch (error) {
-                console.error("Fetch error:", error);
+    // 2. Fetch income/expense data after userId is set
+useEffect(() => {
+    if (!userId) return;
+    async function fetchData() {
+        try {
+            const incomeRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/income/user/${userId}`, {
+                credentials: 'include'
+            });
+            if (incomeRes.ok) {
+                setIncome(await incomeRes.json());
             }
+            const expenseRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/expense/user/${userId}`, {
+                credentials: 'include'
+            });
+            if (expenseRes.ok) {
+                setExpense(await expenseRes.json());
+            }
+        } catch (error) {
+            console.error("Fetch error:", error);
         }
+    }
+    fetchData();
+}, [userId, reloadKey]);
 
-        if (userId) {
-            fetchData();
-        }
-    }, [userId]);
-
+    // ...filtering and calculations exactly as before...
     const filteredIncome = income.filter(item => {
         const itemDate = new Date(item.date)
         const matchesDateRange = (!startDate || itemDate >= new Date(startDate)) && (!endDate || itemDate <= new Date(endDate))
         const matchesSearch = item.source.toLowerCase().includes(incomeSearch.toLowerCase())
         return matchesDateRange && matchesSearch
-    })
+    });
 
     const filteredExpenses = expense.filter(item => {
         const itemDate = new Date(item.date);
@@ -121,7 +126,6 @@ export default function Dashboard() {
     const maxExpenseMonth = monthlyExpenses.indexOf(Math.max(...monthlyExpenses))
     const minIncomeMonth = monthlyIncome.indexOf(Math.min(...monthlyIncome))
     const minExpenseMonth = monthlyExpenses.indexOf(Math.min(...monthlyExpenses))
-    
 
     const monthlyData = {
         labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
@@ -214,13 +218,12 @@ export default function Dashboard() {
     }
 
     async function handleSubscribe(){
-        const token = localStorage.getItem('token')
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/subscribe`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
             },
+            credentials: 'include',
             body: JSON.stringify({frequency: emailReportFrequency, userId})
         })
 
@@ -232,9 +235,12 @@ export default function Dashboard() {
         }
     }
 
+    // Block rendering until profile is loaded and authenticated
+    if (!isProfileLoaded) return <div>Loading...</div>;
+    if (!isAuthenticated) return <div>Redirecting to login...</div>;
+
     
     return (
-        !isTokenLoaded ? (<div>Loading</div>) : (
         <div>
             <Navbar/>
             <div>
@@ -248,11 +254,11 @@ export default function Dashboard() {
                 <div className="p-10 flex flex-col lg:flex-row gap-20 mb-10">
                     <div className="flex-1 flex flex-col gap-6">
                         <h2 className="text-2xl md:text-3xl font-semibold">Add Income</h2>
-                        <AddIncomeForm />
+                        <AddIncomeForm userId={userId} onSuccess={() => setReloadKey((k) => k + 1)} />
                     </div>
                     <div className="flex-1 flex flex-col gap-6">
                         <h2 className="text-2xl md:text-3xl font-semibold">Add Expense</h2>
-                        <AddExpenseForm />
+                        <AddExpenseForm userId={userId} onSuccess={() => setReloadKey((k) => k + 1)}/>
                     </div>
                 </div>
                 <hr></hr>
@@ -491,6 +497,5 @@ export default function Dashboard() {
                 </div>
             </div>
         </div>
-        )
     );
 }

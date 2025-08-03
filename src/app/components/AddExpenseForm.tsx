@@ -2,7 +2,12 @@
 
 import { FormEvent, useState } from 'react';
 
-export default function AddExpenseForm() {
+interface AddExpenseFormProps {
+  userId: string;
+  onSuccess: () => void;
+}
+
+export default function AddExpenseForm({ userId, onSuccess }: AddExpenseFormProps) {
   const [category, setCategory] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState('');
@@ -10,16 +15,22 @@ export default function AddExpenseForm() {
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
+
+    // Only allow submit if userId is present
+    if (!userId) {
+      setMessage({ text: 'User not loaded yet.', type: 'error' });
+      return;
+    }
+
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/api/expense/add?userId=${userId}`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          // No Authorization header!
         },
+        credentials: 'include', // THIS is what lets the cookie/session work!
         body: JSON.stringify({ category, amount: parseFloat(amount), date }),
       }
     );
@@ -29,6 +40,7 @@ export default function AddExpenseForm() {
       setCategory('');
       setAmount('');
       setDate('');
+      onSuccess();
     } else {
       setMessage({ text: 'An error occurred while adding the expense.', type: 'error' });
     }
@@ -85,6 +97,7 @@ export default function AddExpenseForm() {
       {/* Submit Button */}
       <button
         type="submit"
+        disabled={!userId}
         className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
         Add Expense

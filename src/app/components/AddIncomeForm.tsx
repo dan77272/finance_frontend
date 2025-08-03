@@ -2,7 +2,12 @@
 
 import { FormEvent, useState } from 'react';
 
-export default function AddIncomeForm() {
+interface AddIncomeFormProps {
+  userId: string;
+  onSuccess: () => void;
+}
+
+export default function AddIncomeForm({ userId, onSuccess }: AddIncomeFormProps) {
   const [source, setSource] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState('');
@@ -10,16 +15,18 @@ export default function AddIncomeForm() {
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
+
+    if (!userId) {
+      setMessage({ text: 'User not loaded yet.', type: 'error' });
+      return;
+    }
+
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/api/income/add?userId=${userId}`,
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ source, amount: parseFloat(amount), date }),
       }
     );
@@ -29,6 +36,7 @@ export default function AddIncomeForm() {
       setSource('');
       setAmount('');
       setDate('');
+      onSuccess(); // <-- THIS TRIGGERS THE RELOAD!
     } else {
       setMessage({ text: 'An error occurred while adding the income.', type: 'error' });
     }
